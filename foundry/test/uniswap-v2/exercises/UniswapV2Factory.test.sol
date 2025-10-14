@@ -18,16 +18,20 @@ import {ERC20} from "../../../src/ERC20.sol";
 
 contract UniswapV2FactoryTest is Test {
     IWETH private constant weth = IWETH(WETH);
-    IUniswapV2Factory private constant factory =
-        IUniswapV2Factory(UNISWAP_V2_FACTORY);
+    IUniswapV2Factory private constant factory = IUniswapV2Factory(UNISWAP_V2_FACTORY);
 
     function test_createPair() public {
         ERC20 token = new ERC20("test", "TEST", 18);
 
+        console2.log("Token address", address(token));
+
         // Exercise - deploy token + WETH pair contract
         // Write your code here
         // Don’t change any other code
-        address pair;
+
+        // Don't mind the order of the tokens,
+        // the returned pair address always will be the same
+        address pair = factory.createPair(address(token), WETH);
 
         address token0 = IUniswapV2Pair(pair).token0();
         address token1 = IUniswapV2Pair(pair).token1();
