@@ -61,29 +61,43 @@ contract UniswapV2LiquidityTest is Test {
         console2.log("Amount DAI:", amountA);
         console2.log("Amount WETH:", amountB);
         console2.log("Amount LP:", liquidity);
+        
         assertGt(pair.balanceOf(user), 0, "LP = 0");
     }
 
-    // function test_removeLiquidity() public {
-    //     vm.startPrank(user);
-    //     (,, uint256 liquidity) = router.addLiquidity({
-    //         tokenA: DAI,
-    //         tokenB: WETH,
-    //         amountADesired: 1000000 * 1e18,
-    //         amountBDesired: 100 * 1e18,
-    //         amountAMin: 1,
-    //         amountBMin: 1,
-    //         to: user,
-    //         deadline: block.timestamp
-    //     });
-    //     pair.approve(address(router), liquidity);
+    function test_removeLiquidity() public {
+        vm.startPrank(user);
+        (,, uint256 liquidity) = router.addLiquidity({
+            tokenA: DAI,
+            tokenB: WETH,
+            amountADesired: 1000000 * 1e18,
+            amountBDesired: 100 * 1e18,
+            amountAMin: 1,
+            amountBMin: 1,
+            to: user,
+            deadline: block.timestamp
+        });
+        pair.approve(address(router), liquidity);
 
-    //     // Exercise - Remove liquidity from DAI / WETH pool
-    //     // Write your code here
-    //     // Don’t change any other code
+        // Exercise - Remove liquidity from DAI / WETH pool
+        // Write your code here
+        // Don’t change any other code
 
-    //     vm.stopPrank();
+        (uint256 amountA, uint256 amountB) = router.removeLiquidity({
+            tokenA: DAI,
+            tokenB: WETH,
+            liquidity: liquidity,
+            amountAMin: 1,
+            amountBMin: 1,
+            to: user,
+            deadline: block.timestamp
+        });
+        vm.stopPrank();
 
-    //     assertEq(pair.balanceOf(user), 0, "LP = 0");
-    // }
+        console2.log("Amount LP:", liquidity);
+        console2.log("Amount DAI:", amountA);
+        console2.log("Amount WETH:", amountB);
+
+        assertEq(pair.balanceOf(user), 0, "LP = 0");
+    }
 }
