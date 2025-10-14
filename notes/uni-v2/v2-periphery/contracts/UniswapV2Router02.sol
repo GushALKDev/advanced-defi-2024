@@ -255,7 +255,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         );
         _swap(amounts, path, to);
     }
-    // NOTE: swap min input for specified output
+    // NOTE: swap max input for specified output
     // max in = 3000 DAI
     // out =  1 WETH
     function swapTokensForExactTokens(

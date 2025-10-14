@@ -49,26 +49,41 @@ library UniswapV2Library {
         require(amountIn > 0, 'UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT');
         require(reserveIn > 0 && reserveOut > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
         // NOTE:
-        // x = token in
-        // y = token out
-        //       dx * 0.997 * x0
-        // dy = -----------------
+        // fee = 0.3%
+        // 1 - fee = 0.997
+
+        // x0 = reserveIn
+        // y0 = reserveOut
+
+        // dx = amountIn
+
+        // NOTE: LOOKING FOR -> dy = amountOut
+
+        //       dx * 0.997 * y0
+        // dy = ------------------
         //       x0 + dx * 0.997
 
+        //        amountIn * (997 / 1000) * reserveOut
+        //    = ---------------------------------
+        //       reserveIn + amountIn * (997 / 1000)
+
+        //        amountIn * 997 * reserveOut
+        //    = ---------------------------------
+        //       reserveIn * 1000 + amountIn * 997
+
         // NOTE:
-        // dx * 997
+        // amountInWithFee = amountIn * 997
         uint amountInWithFee = amountIn.mul(997);
-        // dx * 997 * y0
+        
+        // numerator = (amountIn * 997) * reserveOut
         uint numerator = amountInWithFee.mul(reserveOut);
-        // x0 * 1000 + dx * 997
+        
+        // denominator = reserveIn * 1000 + amountIn * 997
         uint denominator = reserveIn.mul(1000).add(amountInWithFee);
-        //          dx * 997 * y0
-        // dy = ----------------------
-        //       x0 * 1000 + dx * 997
-        // 
-        //        dx * 997 / 1000 * y0
-        //    = -----------------------
-        //        x0 + dx * 997 / 1000
+
+        //         numerator
+        // dy = ---------------
+        //        denominator
         amountOut = numerator / denominator;
     }
 
@@ -81,16 +96,23 @@ library UniswapV2Library {
         // (y0 - dy) * 997 
         uint denominator = reserveOut.sub(amountOut).mul(997);
         // NOTE:
-        // (x0 + dx * (1 - f))(y0 - dy) = x0 * y0
+        // L**2 after the swap must be == than L**2 before the swap
+        // (x0 + dx * (1 - f))(y0 - dy) == L**2 == x0 * y0
+
         //       x0 * dy       1
         // dx = --------- * -------
         //       y0 - dy     1 - f
+
         //       x0 * dy * 1000
         // dx = ----------------- 
         //      (y0 - dy) * 997
+        
         // NOTE: round up
+        // Add 1 to round up the result, ensuring we don't underestimate the required input amount
+        // This prevents potential rounding down issues that could lead to insufficient input
+        // Example: 1005 / 10 = 100.5 -> rounds down to 100, but we need 101 to cover the full amount
         amountIn = (numerator / denominator).add(1);
-    }
+        }
 
     // performs chained getAmountOut calculations on any number of pairs
     // NOTE: amounts[0] = amountIn
@@ -107,8 +129,8 @@ library UniswapV2Library {
         // path = [WETH, DAI, MKR]
         // --- Outputs ---
         // WETH    1000000000000000000 (1 * 1e18)
-        // DAI  2500339748620145970214 (2500.3397... * 1e18)
-        // MKR     1242766501542703043 (1.2427... * 1e18)
+        // DAI  4162271805086561934331 (4162.2718... * 1e18)
+        // MKR       45574706621007603 (0.0455... * 1e18)
 
         // --- Execution ---
         // amounts = [0, 0, 0]
@@ -118,14 +140,14 @@ library UniswapV2Library {
         // i = 0
         // path[i] = WETH, path[i + 1] = DAI
         // amounts[i] = 1000000000000000000
-        // amounts[i + 1] = 2500339748620145970214
-        // amounts = [1000000000000000000, 2500339748620145970214, 0]
+        // amounts[i + 1] = 4162271805086561934331
+        // amounts = [1000000000000000000, 4162271805086561934331, 0]
 
         // i = 1
         // path[i] = DAI, path[i + 1] = MKR
-        // amounts[i] = 2500339748620145970214
-        // amounts[i + 1] = 1242766501542703043
-        // amounts = [1000000000000000000, 2500339748620145970214, 1242766501542703043]
+        // amounts[i] = 4162271805086561934331
+        // amounts[i + 1] = 45574706621007603
+        // amounts = [1000000000000000000, 4162271805086561934331, 45574706621007603]
 
         // NOTE:
         //   i | path[i]   | path[i + 1]
@@ -134,10 +156,18 @@ library UniswapV2Library {
         //   2 | path[2]   | path[3]
         // n-2 | path[n-2] | path[n-1]
         for (uint i; i < path.length - 1; i++) {
-            // NOTE: reserves = internal balance of tokens inside pair contract
+            // NOTE: reserves = internal balance of tokens inside the pair contract
             (uint reserveIn, uint reserveOut) = getReserves(factory, path[i], path[i + 1]);
-            // NOTE: use the previous output for input
+            // NOTE: use the previous output amount as the next input amount
             amounts[i + 1] = getAmountOut(amounts[i], reserveIn, reserveOut);
+            // path = [DAI, WETH]
+            // amounts [0] = 1000 * 10 ** 18 DAI
+            // amounts [1] = WETH amount out
+
+            // path = [DAI, WETH, MKR]
+            // amounts [0] = 1000 * 10 ** 18 DAI
+            // amounts [1] = WETH amount out
+            // amounts [2] = MKR amount
         }
     }
 
@@ -148,29 +178,29 @@ library UniswapV2Library {
         amounts[amounts.length - 1] = amountOut;
 
         // --- Inputs ---
-        // amountOut = 1e18
+        // amountOut = 10000000000000000
         // path = [WETH, DAI, MKR]
         // --- Outputs ---
-        // WETH     804555560756014274 (0.8045... * 1e18)
-        // DAI  2011892163724115442026 (2011.892... * 1e18)
-        // MKR     1000000000000000000 (1 * 1e18)
+        // WETH       4569775674251490 (0.004569... * 1e18)
+        // DAI   19031473161805224895 (19.031... * 1e18)
+        // MKR   10000000000000000 (0.01 * 1e18)
 
         // --- Execution ---
         // amounts = [0, 0, 0]
-        // amounts = [0, 0, 1000000000000000000]
+        // amounts = [0, 0, 10000000000000000]
 
         // For loop
         // i = 2
         // path[i - 1] = DAI, path[i] = MKR
-        // amounts[i] = 1000000000000000000
-        // amounts[i - 1] = 2011892163724115442026
-        // amounts = [0, 2011892163724115442026, 1000000000000000000]
+        // amounts[i] = 10000000000000000
+        // amounts[i - 1] = 19031473161805224895
+        // amounts = [0, 19031473161805224895, 10000000000000000]
 
         // i = 1
         // path[i - 1] = WETH, path[i] = DAI
-        // amounts[i] = 2011892163724115442026
-        // amounts[i - 1] = 804555560756014274
-        // amounts = [804555560756014274, 2011892163724115442026, 1000000000000000000]
+        // amounts[i] = 19031473161805224895
+        // amounts[i - 1] = 4569775674251490
+        // amounts = [4569775674251490, 19031473161805224895, 10000000000000000]
 
         // NOTE:
         // i     | output amount  | input amount
