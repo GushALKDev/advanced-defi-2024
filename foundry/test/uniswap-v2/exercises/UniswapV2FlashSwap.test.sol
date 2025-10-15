@@ -39,7 +39,6 @@ contract UniswapV2FlashSwapTest is Test {
         flashSwap.flashSwap(DAI, 1e6 * 1e18);
         uint256 dai1 = dai.balanceOf(UNISWAP_V2_PAIR_DAI_WETH);
 
-        console2.log("DAI fee", dai1 - dai0);
         assertGe(dai1, dai0, "DAI balance of pair");
     }
 }
