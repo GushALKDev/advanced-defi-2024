@@ -43,6 +43,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
             IUniswapV2Factory(factory).createPair(tokenA, tokenB);
         }
         (uint reserveA, uint reserveB) = UniswapV2Library.getReserves(factory, tokenA, tokenB);
+        // if there is no liquidity in the pair yet
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
