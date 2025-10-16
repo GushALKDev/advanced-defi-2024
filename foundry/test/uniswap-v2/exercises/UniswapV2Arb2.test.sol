@@ -39,6 +39,9 @@ contract UniswapV2Arb2Test is Test {
         weth.deposit{value: 100 * 1e18}();
         weth.approve(address(uni_router), type(uint256).max);
 
+        // Log prices BEFORE market manipulation
+        _logPrices("BEFORE MANIPULATION");
+
         address[] memory path = new address[](2);
         path[0] = WETH;
         path[1] = DAI;
@@ -50,6 +53,10 @@ contract UniswapV2Arb2Test is Test {
             to: user,
             deadline: block.timestamp
         });
+
+         // Log prices AFTER market manipulation
+        _logPrices("AFTER MANIPULATION");
+
     }
 
     function test_flashSwap() public {
@@ -64,8 +71,51 @@ contract UniswapV2Arb2Test is Test {
         );
         uint256 bal1 = dai.balanceOf(user);
 
-        assertGe(bal1, bal0, "no profit");
+        assertGt(bal1, bal0, "no profit");
         assertEq(dai.balanceOf(address(arb)), 0, "DAI balance of arb != 0");
-        console2.log("profit", bal1 - bal0);
+        console2.log("Profit:", (bal1 - bal0)/1e18);
+    }
+
+    function _logPrices(string memory stage) private view {
+        // Get quote for 1 WETH in both DEXs (how much DAI we get for 1 WETH)
+        address[] memory path = new address[](2);
+        path[0] = WETH;
+        path[1] = DAI;
+
+        uint256[] memory uniAmounts = uni_router.getAmountsOut(1e18, path);
+        uint256[] memory sushiAmounts = sushi_router.getAmountsOut(1e18, path);
+
+        uint256 uniPrice = uniAmounts[1]; // DAI per WETH on Uniswap
+        uint256 sushiPrice = sushiAmounts[1]; // DAI per WETH on Sushiswap
+
+        console2.log(string(abi.encodePacked("=== PRICES ", stage, " ===")));
+        console2.log("Uniswap WETH price (DAI):", uniPrice);
+        console2.log("Sushiswap WETH price (DAI):", sushiPrice);
+        
+        // Calculate price difference in percentage first
+        uint256 priceSpreadPercentage = 0;
+        if (sushiPrice != uniPrice) {
+            priceSpreadPercentage = sushiPrice > uniPrice 
+                ? ((sushiPrice - uniPrice) * 100) / uniPrice
+                : ((uniPrice - sushiPrice) * 100) / sushiPrice;
+            console2.log("Price spread percentage:", priceSpreadPercentage);
+        }
+        
+        // Only show arbitrage opportunity if spread > 1%
+        if (priceSpreadPercentage > 1) {
+            if (sushiPrice > uniPrice) {
+                uint256 diffBps = ((sushiPrice - uniPrice) * 10000) / uniPrice;
+                console2.log("Sushiswap is more expensive by (bps):", diffBps);
+                console2.log("Arbitrage opportunity: Buy WETH on Uniswap, sell on Sushiswap");
+            } else if (uniPrice > sushiPrice) {
+                uint256 diffBps = ((uniPrice - sushiPrice) * 10000) / sushiPrice;
+                console2.log("Uniswap is more expensive by (bps):", diffBps);
+                console2.log("Arbitrage opportunity: Buy WETH on Sushiswap, sell on Uniswap");
+            }
+        } else {
+            console2.log("Price difference <= 1% - No profitable arbitrage opportunity");
+        }
+        
+        console2.log("==========================================");
     }
 }

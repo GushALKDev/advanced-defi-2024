@@ -16,4 +16,5 @@ interface IERC20 {
         external
         returns (bool);
     function symbol() external view returns (string memory);
+    function name() external view returns (string memory);
 }
