@@ -25,8 +25,35 @@ contract UniswapV3SwapTest is Test {
         // Write your code here
         // Don’t change any other code
 
-        // sqrtPriceX96 * sqrtPriceX96 might overflow
-        // So use FullMath.mulDiv to do uint256 * uint256 / uint256 without overflow
+        uint256 sqrtPriceX96 = slot0.sqrtPriceX96;
+
+        // P = Y / X
+        // Price of USDC in terms of WETH
+
+        // 1 / P = X / Y
+        // Price of WETH in terms of USDC
+
+        // P has 1e18 / 1e6 = 1e12 decimals
+        // 1 / P has 1e6 / 1e18 = 1e-12 decimals
+
+        // sqrtPriceX96 = sqrt(P) * Q96
+        // Q96 = 2^96
+        // sqrtPriceX96 * sqrtPriceX96 = sqrt(P) * Q96 * sqrt(P) * Q96
+        // sqrtPriceX96 * sqrtPriceX96 = P * Q96 * Q96
+        // P = (sqrtPriceX96 * sqrtPriceX96) / (Q96 * Q96)
+        // P = (sqrtPriceX96 * sqrtPriceX96) / Q96^2
+
+        price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, Q96**2);
+
+        // Inverse price calculation with decimal adjustment:
+        // - price currently contains P (USDC/WETH price)
+        // - We need 1/P (WETH/USDC price) for the exercise
+        // - 1e18: Scale to get 18 decimal precision in final result
+        // - 1e12: Compensate for decimal difference between WETH (18) and USDC (6)
+        // - /price: Mathematical inversion (1/P)
+        // Result: WETH price in USDC with 18 decimal precision
+        
+        price = 1e18 * 1e12 / price;
 
         assertGt(price, 0, "price = 0");
         console2.log("price %e", price);
