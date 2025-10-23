@@ -48,12 +48,14 @@ contract UniswapV3SwapTest is Test {
         // Inverse price calculation with decimal adjustment:
         // - price currently contains P (USDC/WETH price)
         // - We need 1/P (WETH/USDC price) for the exercise
+        // Since price has 1e12 decimals, we need to adjust to get 18 decimals in final result
+        // - 1/price: Mathematical inversion (1/P)
         // - 1e18: Scale to get 18 decimal precision in final result
-        // - 1e12: Compensate for decimal difference between WETH (18) and USDC (6)
-        // - /price: Mathematical inversion (1/P)
+        // - 1e12: Compensate for the 12 decimals of price in the denominator
+        // price = 1e18 * 1e12 / price;
         // Result: WETH price in USDC with 18 decimal precision
         
-        price = 1e18 * 1e12 / price;
+        price = 1e18 * 1e12 / price; // 1/P with 18 decimals
 
         assertGt(price, 0, "price = 0");
         console2.log("price %e", price);
