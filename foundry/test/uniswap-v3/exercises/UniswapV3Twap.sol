@@ -49,27 +49,37 @@ contract UniswapV3Twap {
         returns (uint256 amountOut)
     {
         // Task 1 - Require tokenIn is token0 or token1
+        require(tokenIn == token0 || tokenIn == token1, "Invalid token");
+
         // Task 2 - Assign tokenOut
-        address tokenOut;
+        address tokenOut = tokenIn == token0 ? token1 : token0;
 
         // Task 3 - Fill out timeDeltas with dt and 0
         uint32[] memory timeDeltas = new uint32[](2);
+        timeDeltas[0] = dt;
+        timeDeltas[1] = 0;
 
         // Task 4 - Call pool.observe
+        // Returns the cumulative tick and liquidity as of each time delta from the current block timestamp
+        // We only need the tickCumulatives for this exercise
+        (int56[] memory tickCumulatives,) = pool.observe(timeDeltas);
+
         // Task 5 - Calculate tickCumulativeDelta
-        int56 tickCumulativeDelta;
+        int56 tickCumulativeDelta = tickCumulatives[1] - tickCumulatives[0];
 
         // Task 6 - Calculate average tick
-        int24 tick;
+        // Average tick over the period is equal to the difference in cumulative ticks divided by the time period
+        int24 avgTick = int24(tickCumulativeDelta / int56(uint56(dt)));
 
         // Always round to negative infinity
         if (
             tickCumulativeDelta < 0
                 && (tickCumulativeDelta % int56(uint56(dt)) != 0)
         ) {
-            tick--;
+            avgTick--;
         }
 
         // Task 7 - Call getQuoteAtTick
+        amountOut = getQuoteAtTick(avgTick, amountIn, tokenIn, tokenOut);
     }
 }
