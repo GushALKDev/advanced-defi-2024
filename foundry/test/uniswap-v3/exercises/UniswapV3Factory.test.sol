@@ -31,6 +31,7 @@ contract UniswapV3FactoryTest is Test {
     function test_getPool() public {
         // Write your code here
         address pool;
+        pool = factory.getPool(DAI, USDC, POOL_FEE);
         assertEq(pool, UNISWAP_V3_POOL_DAI_USDC_100);
     }
 
@@ -42,6 +43,8 @@ contract UniswapV3FactoryTest is Test {
         (address token0, address token1) = address(tokenA) <= address(tokenB)
             ? (address(tokenA), address(tokenB))
             : (address(tokenB), address(tokenA));
+
+        pool = factory.createPool(address(token0), address(token1), POOL_FEE);
 
         assertEq(IUniswapV3Pool(pool).token0(), token0);
         assertEq(IUniswapV3Pool(pool).token1(), token1);
